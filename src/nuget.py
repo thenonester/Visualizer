@@ -6,12 +6,10 @@ import urllib.request
 def norm(pack):
   return pack.lower()
 
-def url(url, pack):
+def url_pack(url, pack, vers=None):
   n=norm(pack)
-  return f"{url}/{n}/index.json"
-
-def url_vers(url, pack, vers):
-  n=norm(pack)
+  if not vers:
+    return f"{url}/{n}/index.json"
   return f"{url}/{n}/{vers}.json"
 
 def print_dep(pack, vers, deps):
@@ -35,7 +33,27 @@ def base_url(source):
       return res["@id"].rstrip("/")
   raise ValueError("RegistrationBaseUrl not found")
 
-def latest(vers):
+def get_verse(base, pack):
+  url = url_pack(base, pack)
+  data = jsonu(url)
+  versions=[]
+  for page in data.get("items", []):
+    if "items" in page:
+      items = page["items"]
+    else:
+      p_url = page.get("@id")
+      if not p_url:
+        continue
+      p_data = jsonu(p_url)
+      items = p_data.get("items", [])
+    for item in items:
+      entry = item.get("catalogEntry", {})
+      vers = entry.get("version")
+      if v:
+        versions.append(vers)
+  return versions
+
+def latest(vers): 
   if not vers:
     raise ValueError("No Versions Found")
   return versions[-1]
