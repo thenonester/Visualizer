@@ -1,6 +1,7 @@
 """CLI - Приложение для визуализации графа зависимостей"""
 
-import sys\
+import sys
+from . import nuget
 
 def parse(argv):
 	"""Разбирает аргументы командной строки"""
@@ -54,15 +55,23 @@ def valid(args):
 	if args["Package"] == None:
 		raise ValueError("--package requires argument")
 
-def printt(args):
-	"""Вывод параметров, настраиваемых пользователем"""
-	print("="*40)
-	print(f"	package:	{args["Package"]}")
-	print(f"	source:		{args["Source"]}")
-	print(f"	test:		{args["Test"]}")
-	print(f"	depth:		{args["Depth"]}")
-	print(f"	filter:		{args["Filter"]}")
-	print("="*40)
+def is_url(source):
+	"""Проверка source на URL"""
+	return(source.startswith("http://") or source.startswith("https://"))
+
+def depses(args):
+	"""Вывод зависимости пакетов"""
+	source = args["Source"]
+	if not is_url(sourse):
+		print(f"error: sourse is not a URL: {sourse}")
+		return False
+	try:
+		version, deps = nuget.info(source, args["Package"])
+		nuget.printt(args["Package"], version, deps)
+		return True
+	except ValueError as e:
+		print(f"error: {e}")
+		return False
 
 def main():
 	"""Вход в приложение"""
@@ -72,7 +81,8 @@ def main():
 	except ValueError as e:
 		print(f"Error: {e}")
 		sys.exit(1)
-	printt(args)
+	if not args["Test"]:
+		depses(args)
 
 if __name__ == "__main__":
 	main()
