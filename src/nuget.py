@@ -16,11 +16,21 @@ def print_dep(pack, vers, deps):
   print(f"Package: {pack} {vers}")
   print(f"Direct dependencies ({len(deps)})")
   for dep in deps:
-    print(f" - {form(dep)}")
+    if deps["range"]:
+      print(f" - {dep["id"]} {dep["range"]}")
+    else:
+      print(f" - {dep["id"]}")
 
 def info(source, package, version=None):
   """получение информации о пакете"""
-  if version:''
+  base = base_url(source)
+  vers = get_verse(base, pack)
+  if version is None:
+    version = latest(vers)
+  elif version not in vers:
+    raise ValueError(f"Version {vers} not found")
+  dep = getdeps(base, pack, vers)
+  return vers, dep
 
 def base_url(source):
   """Определяет базовый URL"""
@@ -49,7 +59,7 @@ def get_verse(base, pack):
     for item in items:
       entry = item.get("catalogEntry", {})
       vers = entry.get("version")
-      if v:
+      if vers:
         versions.append(vers)
   return versions
 
@@ -58,13 +68,37 @@ def latest(vers):
     raise ValueError("No Versions Found")
   return versions[-1]
 
-def getdeps(url, pack, vers):''
+def getdeps(base_url, pack, vers):
+  url = url_pack(base_url, pack, vers)
+  data = jsonu(url)
+  entry = entr(data.get("items", []), vers)
+  if entry is None:
+    raise ValueError(f"Version {vers} not found")
+  return deps(entry)
+
+def entr(items, vers):
+  for item in items:
+    entry = item.get("catalogEntry", {})
+    if entry.get("version") == version:
+      return entry
+  return None
+
+def deps(entry):
+  deps = []
+  seen = set()
+  for group in entry.get("dependencyGroups", []):
+    for dep in group.get("dependencies", []):
+      id = dep.get("id")
+      if id and id not in seen:
+        seen.add(id)
+        dep.append({"id": id, "range": dep.get("range", "")})
+  return dep
 
 def jsonu(url):
   try:
-    urllib.request.urlopen(url, timeout=10):
-    data = r.read().decode("utf-8")
-    return json.loads(data)
+    with urllib.request.urlopen(url, timeout=10):
+      data = r.read().decode("utf-8")
+      return json.loads(data)
   except urllib.error.HTTPError as e:
     raise ValueError(f"HTTP {e.code}: {e.reason}")
   except urllib.error.UELError as e:
